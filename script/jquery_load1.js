@@ -17,18 +17,21 @@
 
     const timestamp = Date.now();
     const CONFIG_SOURCES = [
-        `https://cdn.jsdelivr.net/gh/w0kid/xdxy-wlzx/check.json?t=${timestamp}`,
+         `https://cdn.jsdelivr.net/gh/w0kid/xdxy-wlzx/check.json?t=${timestamp}`,
         `https://raw.githubusercontent.com/w0kid/xdxy-wlzx/main/check.json?t=${timestamp}`
     ];
 
     const ASSETS = {
         css: [
-            './style/index.vsb.css', 
-            './style/index.css', // 你的字体定义在这里面
+            './style/index.vsb.css',
+            './style/index.css',
+            './script/swiper/swiper.min.css',   
+            './script/swiper/swiper-bundle.min.css',
             { url: './style/phone.css', media: 'screen and (max-width: 800px)' }
         ],
         js: [
             './script/jquery.min.js', 
+            './script/TweenMax.min.js',
             './script/set.js', 
             './script/js.js', 
             './script/swiper/swiper.jquery.min.js'
@@ -47,7 +50,7 @@
                 }
             } else {
                 el.src = url;
-                el.async = false;
+                el.async = false; // 保证 JS 按数组顺序执行
             }
             el.onload = () => resolve(true);
             el.onerror = () => resolve(false);
@@ -56,7 +59,6 @@
     };
 
     async function init() {
-        // 设置 5 秒兜底，防止网络极差时页面永久空白
         const failSafe = setTimeout(() => { root.style.display = ''; }, 5000);
         
         let config = null;
@@ -71,32 +73,27 @@
         }
 
         if (config && config.enableProtection === true) {
-            // 1. 先加载 JS
+            // 1. 顺序加载所有 JS
             for (const url of ASSETS.js) {
                 await loadResource('js', url);
             }
 
-            // 2. 加载所有 CSS (包括含有 @font-face 的 index.css)
+            // 2. 并行加载所有 CSS
             await Promise.all(ASSETS.css.map(item => loadResource('css', item)));
 
-            // 3. 【核心优化】等待字体文件下载完成
-            // document.fonts.ready 会等待 CSS 中引用的所有字体下载完毕
+            // 3. 等待字体下载完毕（解决图标闪烁）
             if (document.fonts) {
-                try {
-                    await document.fonts.ready;
-                } catch (e) {
-                    console.warn("字体加载超时或失败，跳过等待");
-                }
+                try { await document.fonts.ready; } catch (e) {}
             }
 
-            // 4. 释放 jQuery 队列
+            // 4. 执行 jQuery 缓存的 ready 函数
             if (window._jqQueue.length > 0) {
                 window._jqQueue.forEach(fn => { try { fn(window.jQuery); } catch(e){} });
             }
         }
 
         clearTimeout(failSafe);
-        root.style.display = ''; // 所有资源（JS/CSS/字体）就绪后，显示网页
+        root.style.display = ''; // 最终显示页面
     }
 
     init();
