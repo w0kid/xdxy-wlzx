@@ -1,6 +1,6 @@
 {
   "enableProtection": false,
-  //"enableProtection": true,
+  ##"enableProtection": true,
   "version": "xdxy_js_load"
 }
 
